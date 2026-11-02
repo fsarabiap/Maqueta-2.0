@@ -174,6 +174,7 @@ fieldset{border:0;padding:0;margin-top:22px}
 
   <section id="s0">
     <div class="dbb loc" id="dbb"></div>
+    <div class="dbb loc" id="pvb"></div><input type="file" id="pvf" accept=".xlsx,.xls,.csv" hidden>
     <div class="opts2">
       <button class="op op1" id="q2" type="button"><span class="oi" aria-hidden="true">👛</span><span class="ot"><small>Opción 01</small><strong>Registrar un ingreso</strong><em>Aportes, créditos y otros ingresos electorales</em></span><span class="ar" aria-hidden="true">→</span></button>
       <button class="op op2" id="q1" type="button"><span class="oi" aria-hidden="true">🧾</span><span class="ot"><small>Opción 02</small><strong>Rendir un gasto</strong><em>Documentos, servicios y gastos de campaña</em></span><span class="ar" aria-hidden="true">→</span></button>
@@ -204,7 +205,7 @@ fieldset{border:0;padding:0;margin-top:22px}
     <form id="f" novalidate>
       <div class="fields">
         <div class="stp"><label for="rut">Ingrese el RUT del proveedor</label><input id="rut" placeholder="12.345.678-5" autocomplete="off"><div class="err" id="e-rut"></div></div>
-        <div class="stp"><label for="prov">Ingrese el nombre del proveedor</label><input id="prov" autocomplete="off"><div class="err" id="e-prov"></div></div>
+        <div class="stp"><label for="prov">Ingrese el nombre del proveedor</label><input id="prov" autocomplete="off"><div class="err" id="e-prov"></div><div class="okm" id="m-prov"></div></div>
         <div class="stp"><label for="tdoc">Seleccione el tipo de documento</label>
           <select id="tdoc"><option value="">Seleccione…</option><option>Factura afecta</option><option>Factura exenta</option><option>Boleta</option><option>Boleta de honorarios</option><option>Boleta de venta y servicios</option><option>Contrato / Convenio</option><option>Otro</option></select><div class="err" id="e-tdoc"></div></div>
         <div class="stp"><label for="ndoc">Ingrese el número de factura o boleta</label><input id="ndoc" class="m" inputmode="numeric" autocomplete="off"><div class="err" id="e-ndoc"></div></div>
@@ -405,7 +406,7 @@ function cards(id,items){
 function show(n){
   if(n<4)ed=null;
   ["s0","s1","s2","s3","s4","s5","s6","s7","s8","s9"].forEach((id,i)=>$(id).hidden=i!==n);
-  document.querySelector(".log").hidden=n>=8;if(n===0)dbBar();
+  document.querySelector(".log").hidden=n>=8;if(n===0){dbBar();pvBar()}
   $("ayuda").hidden=!((n>=1&&n<=4)||(n===6&&pv&&pv.id==="f"));
   if(n!==4)hideAl();$("al2").hidden=true;$("al3").hidden=true;
   const c=$("crumbs");c.innerHTML="";
@@ -454,7 +455,19 @@ $("fi").addEventListener("reset",()=>{$("cfl").textContent="";$("ctot").value=""
 $("ndoc").addEventListener("input",e=>e.target.value=e.target.value.replace(/\D/g,""));
 $("arch").addEventListener("change",e=>{$("fl").textContent=[...e.target.files].map(f=>f.name).join(" · ")});
 $("inf").addEventListener("change",e=>{$("fl2").textContent=[...e.target.files].map(f=>f.name).join(" · ")});
-$("f").addEventListener("reset",()=>{$("fl").textContent="";$("fl2").textContent=""});
+$("f").addEventListener("reset",()=>{$("fl").textContent="";$("fl2").textContent="";$("prov").dataset.auto="";$("m-prov").textContent=""});
+// Autocompletar el nombre del proveedor según el RUT (usa los gastos ya registrados; el más reciente manda)
+// Lista de proveedores importada desde Excel: { "cuerpo del RUT sin DV": "Nombre" }
+const ldObj=k=>{try{return JSON.parse(localStorage.getItem(k)||"{}")||{}}catch(e){return{}}};
+let PV=ldObj("proveedores"),PVdb=false,PVmsg="";
+const rutCuerpo=v=>cleanRut(v).slice(0,-1).replace(/^0+/,"");
+const provDe=rut=>{const k=cleanRut(rut),r=G.find(x=>cleanRut(x.rut)===k&&x.prov);if(r)return{n:r.prov,src:"g"};const n=PV[rutCuerpo(rut)];return n?{n,src:"l"}:{n:""}};
+$("rut").addEventListener("input",()=>{const p=$("prov"),m=$("m-prov");
+  if(!rutOk($("rut").value)){if(p.dataset.auto==="1"){p.value="";p.dataset.auto=""}m.textContent="";return}
+  const f=provDe($("rut").value),n=f.n;
+  if(n&&(!p.value.trim()||p.dataset.auto==="1")){p.value=n;p.dataset.auto="1";m.textContent="✓ Nombre encontrado en "+(f.src==="g"?"sus registros anteriores":"su lista de proveedores")+". Si no es correcto, puede editarlo."}
+  else if(!n){if(p.dataset.auto==="1"){p.value="";p.dataset.auto=""}if(!p.value.trim())m.textContent="Proveedor nuevo: escriba el nombre. Quedará guardado para la próxima vez."}});
+$("prov").addEventListener("input",()=>{const p=$("prov");if(p.dataset.auto==="1"){p.dataset.auto="0";$("m-prov").textContent="Nombre editado: desde ahora se sugerirá este nombre para este RUT."}else if(p.dataset.auto!=="0")$("m-prov").textContent=""});
 // Registros múltiples de aportes valorizados
 const DF={
  "Registro de Brigadistas y Voluntarios":[["rut","Rut"],["ap","Nombre"],["dir","Dirección"],["com","Comuna"]],
@@ -603,7 +616,7 @@ function saveD(){
 }
 function editG(id){
   const r=G.find(x=>x.id==id);if(!r)return;ed={k:"g",rec:r};$("f").reset();clr();
-  $("rut").value=r.rut;$("prov").value=r.prov;$("tdoc").value=r.tdoc;$("ndoc").value=r.ndoc;$("fecha").value=r.fecha;$("monto").value=r.monto.toLocaleString("es-CL");
+  $("rut").value=r.rut;$("prov").value=r.prov;$("prov").dataset.auto="0";$("m-prov").textContent="";$("tdoc").value=r.tdoc;$("ndoc").value=r.ndoc;$("fecha").value=r.fecha;$("monto").value=r.monto.toLocaleString("es-CL");
   document.querySelector('input[name=pago][value="'+r.pago+'"]').checked=true;
   $("fl").textContent=r.arch.length?"Archivos actuales: "+r.arch.join(" · ")+" (seleccione nuevos solo si desea reemplazarlos)":"";
   {const s=[].concat(r.infs||[]);document.querySelectorAll("#infs input").forEach(x=>x.checked=s.includes(x.value))}$("fl2").textContent=(r.inf&&r.inf.length)?"Informe actual: "+r.inf.join(" · ")+" (seleccione nuevos solo si desea reemplazarlo)":"";
@@ -665,7 +678,7 @@ function render(){
     <td>${adjH(r)}</td><td class="n">${fmt(r.monto)}</td><td><button class="ed" data-ei="${r.id}">Editar</button><button class="del" data-i="${r.id}">Eliminar</button></td></tr>`}));
   const so=(a,k)=>{if(k==="m")a.sort((x,y)=>y.m-x.m);if(k==="a")a.sort((x,y)=>x.m-y.m);return a};
   $("cnt").textContent=gR.length+(gR.length===1?" registro":" registros");
-  $("tb").innerHTML=gR.length?so(gR,SORT.g).map(x=>x.h).join(""):`<tr><td colspan="8" class="empty">${FAS?"No hay gastos en incorporados a art. 44 bis.":"Aún no hay gastos registrados."}</td></tr>`;
+  $("tb").innerHTML=gR.length?so(gR,SORT.g).map(x=>x.h).join(""):`<tr><td colspan="8" class="empty">${FAS?"No hay gastos considerados correspondientes a Art. 44 bis.":"Aún no hay gastos registrados."}</td></tr>`;
   $("tgv").innerHTML=gvR.length?so(gvR,SORT.gv).map(x=>x.h).join(""):`<tr><td colspan="7" class="empty">Aún no hay gastos valorizados.</td></tr>`;
   $("tiv").innerHTML=ivR.length?so(ivR,SORT.iv).map(x=>x.h).join(""):`<tr><td colspan="7" class="empty">Aún no hay ingresos valorizados.</td></tr>`;
   const vt=VZ.length+(VZ.length===1?" registro":" registros")+" · "+fmt(iV);$("cntiv").textContent=vt;$("cntgv").textContent=vt+" · generados automáticamente por doble partida";
@@ -687,7 +700,7 @@ $("csv").onclick=()=>{
   const c=[h.map(q).join(";")].concat(G.map(r=>[r.fecha,r.cat,r.sub,r.tipo,r.rut,r.prov,r.tdoc,r.ndoc,r.monto,r.pago,r.arch.join(" | ")].map(q).join(";")),IN.filter(r=>r.tipo==="Valorizado").map(r=>[r.fecha,"Gasto valorizado",r.dcat||"",r.dtipo||"",(r.items||[]).map(x=>x.rut).join(" | "),(r.items||[]).map(x=>x.ap+" ("+x.monto+")").join(" | "),"—","—",r.monto,"Valorizado",(r.adj||[]).join(" | ")].map(q).join(";"))).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+c],{type:"text/csv;charset=utf-8"}));a.download="gastos-electorales.csv";a.click();
 };
-$("fas").onclick=()=>{FAS=!FAS;$("fas").classList.toggle("on",FAS);$("fas").setAttribute("aria-pressed",FAS);$("fas").textContent=FAS?"✖️ Ver todos los gastos":"🏢 Ver Gastos Incorporados dentro del Art. 44 bis";render()};
+$("fas").onclick=()=>{FAS=!FAS;$("fas").classList.toggle("on",FAS);$("fas").setAttribute("aria-pressed",FAS);$("fas").textContent=FAS?"✖️ Ver todos los gastos":"🏢 Ver Arrendamientos y Servicios prestados";render()};
 document.querySelectorAll(".srt").forEach(s=>s.onchange=()=>{SORT[s.dataset.s]=s.value;render()});
 // ===== Base de datos =====
 const flk=(id,n)=>sb&&U?`<button type="button" class="flk" data-fp="${esc(U.id+"/"+id+"/"+n)}">${esc(n)}</button>`:esc(n);
@@ -716,7 +729,7 @@ $("fc").addEventListener("submit",async e=>{e.preventDefault();clr();
   try{localStorage.setItem("sirpce_db",JSON.stringify({url,key}))}catch(x){}
   await conectar();});
 $("fcx").onclick=()=>show(0);
-$("fcd").onclick=async()=>{try{if(sb)await sb.auth.signOut()}catch(x){}try{localStorage.removeItem("sirpce_db")}catch(x){}sb=null;U=null;G=ld("gastos2");IN=grp(ld("ingresos2"));render();show(0);toast("Desconectado: los datos vuelven a guardarse en este navegador")};
+$("fcd").onclick=async()=>{try{if(sb)await sb.auth.signOut()}catch(x){}try{localStorage.removeItem("sirpce_db")}catch(x){}sb=null;U=null;G=ld("gastos2");IN=grp(ld("ingresos2"));PV=ldObj("proveedores");PVdb=false;render();show(0);toast("Desconectado: los datos vuelven a guardarse en este navegador")};
 $("lcfg").onclick=abrirCfg;
 async function entrar(nueva){clr();$("m-log").textContent="";
   const email=$("lemail").value.trim(),password=$("lpass").value;
@@ -737,8 +750,8 @@ async function cargar(){
   const [g,i]=await Promise.all([sb.from("gastos").select("id,data").order("id",{ascending:false}),sb.from("ingresos").select("id,data").order("id",{ascending:false})]);
   const e=g.error||i.error;if(e){toast(msgErr(e));$("dbb").innerHTML=`<span>⚠️ ${esc(msgErr(e))}</span>`;$("dbb").className="dbb pend";return false}
   G=g.data.map(r=>({...r.data,id:r.id}));IN=grp(i.data.map(r=>({...r.data,id:r.id})));return true}
-async function alEntrar(user){U=user;G=[];IN=[];render();show(0);if(await cargar()){render();dbBar()}}
-async function salir(){try{await sb.auth.signOut()}catch(x){}U=null;G=[];IN=[];render();show(9);toast("Sesión cerrada")}
+async function alEntrar(user){U=user;G=[];IN=[];PV={};render();show(0);if(await cargar()){render();dbBar()}await provCargarDB();pvBar()}
+async function salir(){try{await sb.auth.signOut()}catch(x){}U=null;G=[];IN=[];PV={};PVdb=false;render();show(9);toast("Sesión cerrada")}
 function persist(t,rec,ids){if(!(sb&&U)||!rec)return;const fs=(ids||[]).flatMap(id=>[...$(id).files]),uid=U.id;
   (async()=>{const{id,...data}=rec,r=await sb.from(t).upsert({id,data});
     if(r.error)return toast("No se pudo guardar en la base de datos: "+msgErr(r.error));
@@ -757,6 +770,52 @@ async function conectar(){const c=cfgGet();
   U=null;G=[];IN=[];render();
   try{const{data}=await sb.auth.getSession();if(data&&data.session)return alEntrar(data.session.user)}catch(x){}
   show(9)}
+// ===== Importar lista de proveedores desde Excel =====
+function pvBar(){const n=Object.keys(PV).length,b=$("pvb");
+  b.className="dbb "+(n?"":"loc");
+  b.innerHTML=`<span>📇 Lista de proveedores: <b>${n.toLocaleString("es-CL")}</b> ${n===1?"proveedor cargado":"proveedores cargados"}. Al ingresar un RUT, el nombre se completa solo.${PVmsg?`<br><span class="mut">${esc(PVmsg)}</span>`:""}</span>`+
+    `<button class="btn alt sm" type="button" data-pv="imp">Importar desde Excel</button>`+(n?`<button class="del" type="button" data-pv="del">Borrar lista</button>`:"")}
+$("pvb").addEventListener("click",e=>{const a=e.target.dataset.pv;if(a==="imp"){$("pvf").value="";$("pvf").click()}if(a==="del"&&confirm("¿Borrar la lista de proveedores importada?"))provBorrar()});
+$("pvf").addEventListener("change",e=>{const f=e.target.files[0];if(f)provImportar(f)});
+function cargarLector(){return window.XLSX?Promise.resolve():new Promise((ok,ko)=>{const s=document.createElement("script");
+  s.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";s.onload=ok;s.onerror=()=>ko(new Error("No se pudo cargar el lector de Excel. Revise su internet."));document.head.append(s)})}
+// Lee la hoja: busca la fila de encabezados (Rut / Nombre o Razón social) y arma la lista
+function provLeer(wb){
+  const esRut=/^\s*r\.?\s*u\.?\s*t/i,esNom=/nombre|raz[oó]n|proveedor|empresa/i;
+  for(const nm of wb.SheetNames){const F=XLSX.utils.sheet_to_json(wb.Sheets[nm],{header:1,defval:"",raw:false});
+    for(let h=0;h<Math.min(F.length,30);h++){const row=F[h].map(x=>String(x));const cr=row.findIndex(x=>esRut.test(x));if(cr<0)continue;
+      let cn=row.findIndex((x,i)=>i!==cr&&esNom.test(x));if(cn<0)cn=row.findIndex((x,i)=>i>cr&&x.trim());if(cn<0)continue;
+      const D=F.slice(h+1).map(r=>[String(r[cr]||"").trim(),String(r[cn]||"").replace(/\s+/g," ").trim()]).filter(r=>r[0]||r[1]);
+      // ¿la columna RUT trae dígito verificador? (si la mayoría valida, sí)
+      const conDV=D.filter(([r])=>/-/.test(r)||(/^[\d.]+[\dkK]$/.test(r)&&rutOk(r))).length>=D.length*0.8;
+      const out={};let malas=0;
+      D.forEach(([r,n])=>{const c=r.toUpperCase().replace(/[^0-9K]/g,"");const k=(conDV?c.slice(0,-1):c.replace(/K/g,"")).replace(/^0+/,"");
+        if(!/^\d{1,9}$/.test(k)||!n){malas++;return}out[k]=n});
+      return{out,malas,hoja:nm}}}
+  return null}
+async function provImportar(file){
+  try{PVmsg="Leyendo "+file.name+"…";pvBar();await cargarLector();
+    const wb=XLSX.read(await file.arrayBuffer(),{type:"array"}),r=provLeer(wb);
+    if(!r){PVmsg="No se encontró una columna «RUT» y otra «Nombre» en el archivo.";pvBar();return toast(PVmsg)}
+    const nuevos=Object.keys(r.out).length;if(!nuevos){PVmsg="El archivo no tiene filas con RUT y nombre.";pvBar();return toast(PVmsg)}
+    Object.assign(PV,r.out);
+    let donde="este navegador";
+    if(sb&&U&&PVdb){const L=Object.entries(r.out).map(([rut,nombre])=>({rut,nombre}));
+      for(let i=0;i<L.length;i+=500){const x=await sb.from("proveedores").upsert(L.slice(i,i+500),{onConflict:"user_id,rut"});if(x.error){PVmsg="Error al guardar en la base de datos: "+msgErr(x.error);pvBar();return toast(PVmsg)}}
+      donde="la base de datos"}
+    else{try{localStorage.setItem("proveedores",JSON.stringify(PV))}catch(x){}}
+    PVmsg=`Se importaron ${nuevos.toLocaleString("es-CL")} proveedores de «${file.name}» (hoja ${r.hoja}) y quedaron guardados en ${donde}.`+(r.malas?` Se omitieron ${r.malas} filas sin RUT o sin nombre.`:"")+(sb&&U&&!PVdb?" Para guardarla en la base de datos, vuelva a ejecutar el archivo SQL (paso 3 de la guía).":"");
+    pvBar();toast(nuevos+" proveedores importados")
+  }catch(x){PVmsg="No se pudo leer el archivo: "+((x&&x.message)||x);pvBar();toast(PVmsg)}}
+async function provCargarDB(){PVmsg="";if(!(sb&&U))return;const M={};
+  for(let i=0;;i+=1000){const r=await sb.from("proveedores").select("rut,nombre").range(i,i+999);
+    if(r.error){PVdb=false;PV=ldObj("proveedores");PVmsg="La lista se guarda en este navegador: para guardarla en la base de datos, vuelva a ejecutar el archivo SQL (paso 3 de la guía).";return}
+    r.data.forEach(x=>M[x.rut]=x.nombre);if(r.data.length<1000)break}
+  PV=M;PVdb=true}
+async function provBorrar(){
+  if(sb&&U&&PVdb){const x=await sb.from("proveedores").delete().neq("rut","");if(x.error)return toast("No se pudo borrar: "+msgErr(x.error))}
+  else{try{localStorage.removeItem("proveedores")}catch(e){}}
+  PV={};PVmsg="";pvBar();toast("Lista de proveedores borrada")}
 home();render();show(0);conectar();
 </script>
 </body>
