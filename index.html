@@ -291,7 +291,7 @@ fieldset{border:0;padding:0;margin-top:22px}
   <section class="log">
     <div class="bar"><div><h2>Ingresos registrados</h2></div><select class="srt" data-s="i" aria-label="Ordenar ingresos"><option value="r">Más recientes</option><option value="m">Monto: mayor a menor</option><option value="a">Monto: menor a mayor</option></select></div>
     <div class="tw"><table style="min-width:560px"><thead><tr><th>Fecha</th><th>Aportante</th><th>Tipo</th><th class="n">Monto</th><th></th></tr></thead><tbody id="ti"></tbody></table></div>
-    <div class="bar" style="margin-top:36px"><div><h2>Gastos registrados</h2><p class="sub" style="margin:0" id="cnt"></p></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn alt" id="fas" type="button" aria-pressed="false">🏢 Ver Arrendamientos y Servicios prestados</button><select class="srt" data-s="g" aria-label="Ordenar gastos"><option value="r">Más recientes</option><option value="m">Monto: mayor a menor</option><option value="a">Monto: menor a mayor</option></select><button class="btn alt" id="csv" type="button">Exportar CSV</button></div></div>
+    <div class="bar" style="margin-top:36px"><div><h2>Gastos registrados</h2><p class="sub" style="margin:0" id="cnt"></p></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn alt" id="fas" type="button" aria-pressed="false">🏢 Ver Gastos Incorporados dentro del Art. 44 bis</button><select class="srt" data-s="g" aria-label="Ordenar gastos"><option value="r">Más recientes</option><option value="m">Monto: mayor a menor</option><option value="a">Monto: menor a mayor</option></select><button class="btn alt" id="csv" type="button">Exportar CSV</button></div></div>
     <p class="fasm" id="fasm" hidden></p>
     <div class="tw"><table style="min-width:860px"><thead><tr><th>Fecha</th><th>Gasto</th><th>Proveedor</th><th>Documento</th><th>Pago</th><th>Archivos</th><th class="n">Monto</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
     <div class="bar" style="margin-top:36px"><div><h2 class="vh">🎁 Ingresos valorizados</h2><p class="sub" style="margin:0" id="cntiv"></p></div><select class="srt" data-s="iv" aria-label="Ordenar ingresos valorizados"><option value="r">Más recientes</option><option value="m">Monto: mayor a menor</option><option value="a">Monto: menor a mayor</option></select></div>
@@ -644,7 +644,7 @@ function render(){
   const VZ=IN.filter(r=>r.tipo==="Valorizado"),adjH=r=>r.adj&&r.adj.length?r.adj.map(n=>flk(r.id,n)).join("<br>"):"—";
   const GS=FAS?G.filter(isAS):G;
   if(FAS){const a=G.filter(r=>/^Letra C /.test(r.cat)),s2=G.filter(r=>/^Letra D /.test(r.cat));
-    $("fasm").innerHTML=`Mostrando <b>Arrendamientos de bienes muebles o inmuebles</b> (${a.length} · ${fmt(sum(a,()=>1))}) y <b>Servicios prestados</b> (${s2.length} · ${fmt(sum(s2,()=>1))}). Total: <b class="mm2">${fmt(sum(GS,()=>1))}</b>`}
+    $("fasm").innerHTML=`Mostrando <b>Gastos correspondientes a letra c del art. 2 Ley 19.884</b> (${a.length} · ${fmt(sum(a,()=>1))}) y <b>Gastos correspondientes a letra d del art. 2 Ley 19.884</b> (${s2.length} · ${fmt(sum(s2,()=>1))}). Total: <b class="mm2">${fmt(sum(GS,()=>1))}</b>`}
   $("fasm").hidden=!FAS;
   const gR=GS.map(r=>({m:r.monto,h:`<tr><td>${d(r.fecha)}</td>
     <td><strong>${esc(r.tipo)}</strong><br><span class="mut">${esc(r.sub)}</span><br><span class="mut mm">${esc(r.cat)}</span></td>
@@ -665,7 +665,7 @@ function render(){
     <td>${adjH(r)}</td><td class="n">${fmt(r.monto)}</td><td><button class="ed" data-ei="${r.id}">Editar</button><button class="del" data-i="${r.id}">Eliminar</button></td></tr>`}));
   const so=(a,k)=>{if(k==="m")a.sort((x,y)=>y.m-x.m);if(k==="a")a.sort((x,y)=>x.m-y.m);return a};
   $("cnt").textContent=gR.length+(gR.length===1?" registro":" registros");
-  $("tb").innerHTML=gR.length?so(gR,SORT.g).map(x=>x.h).join(""):`<tr><td colspan="8" class="empty">${FAS?"No hay gastos en Arrendamientos ni Servicios prestados.":"Aún no hay gastos registrados."}</td></tr>`;
+  $("tb").innerHTML=gR.length?so(gR,SORT.g).map(x=>x.h).join(""):`<tr><td colspan="8" class="empty">${FAS?"No hay gastos en incorporados a art. 44 bis.":"Aún no hay gastos registrados."}</td></tr>`;
   $("tgv").innerHTML=gvR.length?so(gvR,SORT.gv).map(x=>x.h).join(""):`<tr><td colspan="7" class="empty">Aún no hay gastos valorizados.</td></tr>`;
   $("tiv").innerHTML=ivR.length?so(ivR,SORT.iv).map(x=>x.h).join(""):`<tr><td colspan="7" class="empty">Aún no hay ingresos valorizados.</td></tr>`;
   const vt=VZ.length+(VZ.length===1?" registro":" registros")+" · "+fmt(iV);$("cntiv").textContent=vt;$("cntgv").textContent=vt+" · generados automáticamente por doble partida";
@@ -687,7 +687,7 @@ $("csv").onclick=()=>{
   const c=[h.map(q).join(";")].concat(G.map(r=>[r.fecha,r.cat,r.sub,r.tipo,r.rut,r.prov,r.tdoc,r.ndoc,r.monto,r.pago,r.arch.join(" | ")].map(q).join(";")),IN.filter(r=>r.tipo==="Valorizado").map(r=>[r.fecha,"Gasto valorizado",r.dcat||"",r.dtipo||"",(r.items||[]).map(x=>x.rut).join(" | "),(r.items||[]).map(x=>x.ap+" ("+x.monto+")").join(" | "),"—","—",r.monto,"Valorizado",(r.adj||[]).join(" | ")].map(q).join(";"))).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+c],{type:"text/csv;charset=utf-8"}));a.download="gastos-electorales.csv";a.click();
 };
-$("fas").onclick=()=>{FAS=!FAS;$("fas").classList.toggle("on",FAS);$("fas").setAttribute("aria-pressed",FAS);$("fas").textContent=FAS?"✖️ Ver todos los gastos":"🏢 Ver Arrendamientos y Servicios prestados";render()};
+$("fas").onclick=()=>{FAS=!FAS;$("fas").classList.toggle("on",FAS);$("fas").setAttribute("aria-pressed",FAS);$("fas").textContent=FAS?"✖️ Ver todos los gastos":"🏢 Ver Gastos Incorporados dentro del Art. 44 bis";render()};
 document.querySelectorAll(".srt").forEach(s=>s.onchange=()=>{SORT[s.dataset.s]=s.value;render()});
 // ===== Base de datos =====
 const flk=(id,n)=>sb&&U?`<button type="button" class="flk" data-fp="${esc(U.id+"/"+id+"/"+n)}">${esc(n)}</button>`:esc(n);
