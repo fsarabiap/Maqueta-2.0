@@ -158,6 +158,7 @@ fieldset{border:0;padding:0;margin-top:22px}
 .btn.sm{padding:7px 14px;font-size:.85rem}
 .flk{background:none;border:0;padding:0;font:inherit;color:var(--navy);text-decoration:underline;cursor:pointer;text-align:left}
 .fsec .stp{margin-bottom:18px}.okm{color:#1E6B34;font-size:.85rem;margin-top:3px}
+.pvmsg{margin-top:16px;background:#FDEBD3;border:1px solid #E0A100;border-left:6px solid #E0A100;color:#5C3A00;padding:12px 16px;font-weight:600}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -250,7 +251,7 @@ fieldset{border:0;padding:0;margin-top:22px}
 
   <section id="s6" hidden>
     <h2>Vista previa</h2><p class="sub">Revise la información antes de guardar.</p>
-    <div class="pvw"><h3 class="pq">¿Los datos están correctos?</h3><dl class="pv" id="pvl"></dl>
+    <div class="pvw"><h3 class="pq">¿Los datos están correctos?</h3><dl class="pv" id="pvl"></dl><p class="pvmsg" id="pvmsg" role="status" hidden></p>
       <div class="actions"><button class="btn" id="pvy" type="button">Sí</button><button class="btn alt" id="pvn" type="button">No</button></div></div>
   </section>
 
@@ -578,6 +579,8 @@ function preview(id){
     rows=[["Tipo de ingreso","Efectivo (dinero)"],["Aportante",$("iap").value],["RUT aportante",$("irut").value],["Fecha",dmy($("ifecha").value)],["Monto",fmt(val($("imonto").value)),1]];
     ok=saveI;
   }
+  const pend=id==="f"&&document.querySelector("input[name=pago]:checked").value==="Pendiente de Pago";
+  $("pvmsg").textContent=pend?"⚠️ Este gasto registrará automáticamente una partida en el formulario de ingresos.":"";$("pvmsg").hidden=!pend;
   pv={id,back:id==="f"?4:id==="fd"?7:5,ok,a44};
   $("pvl").innerHTML=rows.map(([l,v,m])=>`<dt>${esc(l)}</dt><dd class="${m?"mm2":""}">${esc(v)||"—"}</dd>`).join("");
   show(6);
